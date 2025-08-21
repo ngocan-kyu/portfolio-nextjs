@@ -1,13 +1,12 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Code2, Database, Globe, Cpu } from 'lucide-react'
+import { Code2, Database, Globe } from 'lucide-react'
 
 const skills = [
-  { icon: <Code2 />, title: 'Frontend', desc: 'React, Next.js, HTML, CSS, Tailwind' },
+  { icon: <Code2 />, title: 'Frontend', desc: 'React, Next.js, HTML, CSS, TailwindCSS' },
   { icon: <Database />, title: 'Backend', desc: 'Java, Spring Boot, Node.js, REST APIs' },
   { icon: <Globe />, title: 'Databases', desc: 'MySQL, PostgreSQL, SQLite' },
-  { icon: <Cpu />, title: 'AI/ML', desc: 'Python, TensorFlow, scikit-learn' }
 ]
 
 export default function SkillsSection() {

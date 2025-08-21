@@ -1,27 +1,49 @@
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import Squares from "@/components/atom/Backgrounds/Squares";
+import Particles from "@/components/atom/Backgrounds/Particles";
+
+// Define props interface for Particles component
+interface ParticlesProps {
+  particleColors: string[];
+  particleCount: number;
+  particleSpread: number;
+  speed: number;
+  particleBaseSize: number;
+  moveParticlesOnHover: boolean;
+  alphaParticles: boolean;
+  disableRotation: boolean;
+}
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Particle configuration
+  const particleConfig: ParticlesProps = {
+    particleColors: ["#ffffff", "#000000"],
+    particleCount: 500,
+    particleSpread: 10,
+    speed: 1,
+    particleBaseSize: 100,
+    moveParticlesOnHover: true,
+    alphaParticles: true,
+    disableRotation: true,
+  };
+
   return (
     <html lang="en">
-      <body>
-        <div className="absolute inset-0 z-0">
-          <Squares
-            speed={0.5}
-            squareSize={40}
-            direction="diagonal"
-            borderColor="#1E40AF"
-            hoverFillColor="#BCA4A4"
-            backgroundColor="#000000"
-          />
+      <body className="h-full">
+        {/* Background Particles Container */}
+        <div className="absolute inset-0 z-10 pointer-events-auto">
+          <div className="w-full h-[600px] relative">
+            <Particles {...particleConfig} />
+          </div>
         </div>
-        <div className="relative z-10">
+
+        {/* Main Content */}
+        <div className="relative z-20">
           <Navbar />
           <main>{children}</main>
           <Footer />

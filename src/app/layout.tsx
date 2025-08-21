@@ -2,53 +2,44 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Particles from "@/components/atom/Backgrounds/Particles";
+import Intro from "@/components/animation/Intro";
+import type { ReactNode } from "react";
 
-// Define props interface for Particles component
-interface ParticlesProps {
-  particleColors: string[];
-  particleCount: number;
-  particleSpread: number;
-  speed: number;
-  particleBaseSize: number;
-  moveParticlesOnHover: boolean;
-  alphaParticles: boolean;
-  disableRotation: boolean;
+/** Particle configuration (kept outside to avoid re-renders) */
+const particleConfig = {
+  particleColors: ["#000000", "#ffffff"],
+  particleCount: 500,
+  particleSpread: 10,
+  speed: 0.8,
+  particleBaseSize: 100,
+  moveParticlesOnHover: true,
+  alphaParticles: true,
+  disableRotation: true,
+};
+
+interface RootLayoutProps {
+  children: ReactNode;
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  // Particle configuration
-  const particleConfig: ParticlesProps = {
-    particleColors: ["#ffffff", "#000000"],
-    particleCount: 500,
-    particleSpread: 10,
-    speed: 0.8,
-    particleBaseSize: 100,
-    moveParticlesOnHover: false,
-    alphaParticles: true,
-    disableRotation: true,
-  };
-
+const RootLayout: React.FC<RootLayoutProps> = ({ children }) => {
   return (
     <html lang="en">
-      <body className="h-full">
-        {/* Background Particles Container */}
-        <div className="absolute inset-0 z-10 pointer-events-auto">
-          <div className="w-full h-[600px] relative">
-            <Particles {...particleConfig} />
-          </div>
+      <body className="h-full bg-background text-foreground antialiased">
+        <Intro />
+
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <Particles {...particleConfig} />
         </div>
 
-        {/* Main Content */}
-        <div className="relative z-20">
+        <div className="relative z-10 flex flex-col min-h-screen">
           <Navbar />
-          <main>{children}</main>
+          <main className="flex-grow">{children}</main>
           <Footer />
         </div>
       </body>
     </html>
   );
-}
+};
+
+export default RootLayout;
+

@@ -1,12 +1,17 @@
-"use client"
-/*
-	Installed from https://reactbits.dev/ts/tailwind/
-*/
+"use client";
 
-import React, { useEffect, useRef } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  memo,
+  useLayoutEffect,
+} from "react";
 import { Renderer, Camera, Geometry, Program, Mesh } from "ogl";
 
-interface ParticlesProps {
+// Types
+interface ParticleProps {
   particleCount?: number;
   particleSpread?: number;
   speed?: number;
@@ -21,28 +26,21 @@ interface ParticlesProps {
   className?: string;
 }
 
-const defaultColors: string[] = ["#ffffff", "#ffffff", "#ffffff"];
+// Defaults
+const DEFAULT_COLORS: string[] = ["#ffffff", "#ffffff", "#ffffff"];
+const DEFAULT_COUNT = 200;
+const DEFAULT_SPREAD = 10;
+const DEFAULT_SPEED = 0.1;
+const DEFAULT_BASE_SIZE = 100;
+const DEFAULT_SIZE_RANDOMNESS = 1;
+const DEFAULT_CAMERA_DISTANCE = 20;
 
-const hexToRgb = (hex: string): [number, number, number] => {
-  hex = hex.replace(/^#/, "");
-  if (hex.length === 3) {
-    hex = hex
-      .split("")
-      .map((c) => c + c)
-      .join("");
-  }
-  const int = parseInt(hex, 16);
-  const r = ((int >> 16) & 255) / 255;
-  const g = ((int >> 8) & 255) / 255;
-  const b = (int & 255) / 255;
-  return [r, g, b];
-};
-
-const vertex = /* glsl */ `
+// GLSL
+const VERTEX_SHADER = /* glsl */ `
   attribute vec3 position;
   attribute vec4 random;
   attribute vec3 color;
-  
+
   uniform mat4 modelMatrix;
   uniform mat4 viewMatrix;
   uniform mat4 projectionMatrix;
@@ -50,112 +48,114 @@ const vertex = /* glsl */ `
   uniform float uSpread;
   uniform float uBaseSize;
   uniform float uSizeRandomness;
-  
+
   varying vec4 vRandom;
   varying vec3 vColor;
-  
+
   void main() {
     vRandom = random;
     vColor = color;
-    
+
     vec3 pos = position * uSpread;
     pos.z *= 10.0;
-    
+
     vec4 mPos = modelMatrix * vec4(pos, 1.0);
     float t = uTime;
-    mPos.x += sin(t * random.z + 6.28 * random.w) * mix(0.1, 1.5, random.x);
-    mPos.y += sin(t * random.y + 6.28 * random.x) * mix(0.1, 1.5, random.w);
-    mPos.z += sin(t * random.w + 6.28 * random.y) * mix(0.1, 1.5, random.z);
-    
+
+    // Gentle organic drift per particle using random seeds
+    mPos.x += sin(t * random.z + 6.2831853 * random.w) * mix(0.1, 1.5, random.x);
+    mPos.y += sin(t * random.y + 6.2831853 * random.x) * mix(0.1, 1.5, random.w);
+    mPos.z += sin(t * random.w + 6.2831853 * random.y) * mix(0.1, 1.5, random.z);
+
     vec4 mvPos = viewMatrix * mPos;
-    gl_PointSize = (uBaseSize * (1.0 + uSizeRandomness * (random.x - 0.5))) / length(mvPos.xyz);
+    // size falls off with distance; add some per-point variance
+    gl_PointSize = (uBaseSize * (1.0 + uSizeRandomness * (random.x - 0.5))) / max(0.0001, length(mvPos.xyz));
     gl_Position = projectionMatrix * mvPos;
   }
 `;
 
-const fragment = /* glsl */ `
+const FRAGMENT_SHADER = /* glsl */ `
   precision highp float;
-  
+
   uniform float uTime;
-  uniform float uAlphaParticles;
+  uniform float uAlphaParticles; // 0: hard circle, 1: soft alpha
   varying vec4 vRandom;
   varying vec3 vColor;
-  
+
   void main() {
     vec2 uv = gl_PointCoord.xy;
     float d = length(uv - vec2(0.5));
-    
-    if(uAlphaParticles < 0.5) {
-      if(d > 0.5) {
-        discard;
-      }
-      gl_FragColor = vec4(vColor + 0.2 * sin(uv.yxx + uTime + vRandom.y * 6.28), 1.0);
+
+    // Soft circle edge for nicer blending
+    float circle = smoothstep(0.5, 0.4, d);
+    if (uAlphaParticles < 0.5) {
+      // Hard circle (discard outside)
+      if (circle <= 0.0) discard;
+      gl_FragColor = vec4(vColor + 0.2 * sin(uv.yxx + uTime + vRandom.y * 6.2831853), 1.0);
     } else {
-      float circle = smoothstep(0.5, 0.4, d) * 0.8;
-      gl_FragColor = vec4(vColor + 0.2 * sin(uv.yxx + uTime + vRandom.y * 6.28), circle);
+      // Soft alpha falloff
+      if (circle <= 0.0) discard;
+      float a = circle * 0.8;
+      gl_FragColor = vec4(vColor + 0.2 * sin(uv.yxx + uTime + vRandom.y * 6.2831853), a);
     }
   }
 `;
 
-const Particles: React.FC<ParticlesProps> = ({
-  particleCount = 200,
-  particleSpread = 10,
-  speed = 0.1,
-  particleColors,
+// Utils
+const hexToRgb = (hex: string): [number, number, number] => {
+  let h = hex.replace(/^#/, "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  const int = parseInt(h, 16);
+  return [((int >> 16) & 255) / 255, ((int >> 8) & 255) / 255, (int & 255) / 255];
+};
+
+// Memoized component to prevent unnecessary React re-renders
+const Particles = memo(function Particles({
+  particleCount = DEFAULT_COUNT,
+  particleSpread = DEFAULT_SPREAD,
+  speed = DEFAULT_SPEED,
+  particleColors = DEFAULT_COLORS,
   moveParticlesOnHover = false,
   particleHoverFactor = 1,
   alphaParticles = false,
-  particleBaseSize = 100,
-  sizeRandomness = 1,
-  cameraDistance = 20,
+  particleBaseSize = DEFAULT_BASE_SIZE,
+  sizeRandomness = DEFAULT_SIZE_RANDOMNESS,
+  cameraDistance = DEFAULT_CAMERA_DISTANCE,
   disableRotation = false,
-  className,
-}) => {
+  className = "",
+}: ParticleProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+  // OGL refs
+  const rendererRef = useRef<Renderer | null>(null);
+  const cameraRef = useRef<Camera | null>(null);
+  const meshRef = useRef<Mesh | null>(null);
 
-    const renderer = new Renderer({ depth: false, alpha: true });
-    const gl = renderer.gl;
-    container.appendChild(gl.canvas);
-    gl.clearColor(0, 0, 0, 0);
+  // Runtime refs
+  const mouseRef = useRef({ x: 0, y: 0 });
+  const rafRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number>(0);
 
-    const camera = new Camera(gl, { fov: 15 });
-    camera.position.set(0, 0, cameraDistance);
+  // Live props in refs for stable animation loop (no re-binding)
+  const speedRef = useRef(speed);
+  const hoverRef = useRef(moveParticlesOnHover);
+  const hoverFactorRef = useRef(particleHoverFactor);
+  const rotationDisabledRef = useRef(disableRotation);
 
-    const resize = () => {
-      const width = container.clientWidth;
-      const height = container.clientHeight;
-      renderer.setSize(width, height);
-      camera.perspective({ aspect: gl.canvas.width / gl.canvas.height });
-    };
-    window.addEventListener("resize", resize, false);
-    resize();
+  useEffect(() => { speedRef.current = speed; }, [speed]);
+  useEffect(() => { hoverRef.current = moveParticlesOnHover; }, [moveParticlesOnHover]);
+  useEffect(() => { hoverFactorRef.current = particleHoverFactor; }, [particleHoverFactor]);
+  useEffect(() => { rotationDisabledRef.current = disableRotation; }, [disableRotation]);
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = container.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      const y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
-      mouseRef.current = { x, y };
-    };
+  // Precompute buffers when count/colors change
+  const { positions, randoms, colors } = useMemo(() => {
+    const pos = new Float32Array(particleCount * 3);
+    const rnd = new Float32Array(particleCount * 4);
+    const col = new Float32Array(particleCount * 3);
+    const palette = (particleColors?.length ? particleColors : DEFAULT_COLORS).map(hexToRgb);
 
-    if (moveParticlesOnHover) {
-      container.addEventListener("mousemove", handleMouseMove);
-    }
-
-    const count = particleCount;
-    const positions = new Float32Array(count * 3);
-    const randoms = new Float32Array(count * 4);
-    const colors = new Float32Array(count * 3);
-    const palette =
-      particleColors && particleColors.length > 0
-        ? particleColors
-        : defaultColors;
-
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < particleCount; i++) {
+      // Random point within unit sphere (radial distribution biased towards center)
       let x: number, y: number, z: number, len: number;
       do {
         x = Math.random() * 2 - 1;
@@ -164,15 +164,55 @@ const Particles: React.FC<ParticlesProps> = ({
         len = x * x + y * y + z * z;
       } while (len > 1 || len === 0);
       const r = Math.cbrt(Math.random());
-      positions.set([x * r, y * r, z * r], i * 3);
-      randoms.set(
-        [Math.random(), Math.random(), Math.random(), Math.random()],
-        i * 4,
-      );
-      const col = hexToRgb(palette[Math.floor(Math.random() * palette.length)]);
-      colors.set(col, i * 3);
-    }
+      pos.set([x * r, y * r, z * r], i * 3);
 
+      rnd.set([Math.random(), Math.random(), Math.random(), Math.random()], i * 4);
+
+      const [cr, cg, cb] = palette[Math.floor(Math.random() * palette.length)];
+      col.set([cr, cg, cb], i * 3);
+    }
+    return { positions: pos, randoms: rnd, colors: col };
+  }, [particleCount, particleColors]);
+
+  // Canvas / WebGL setup
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Remove any previous canvas (safety in fast re-mount scenarios)
+    while (container.firstChild) container.removeChild(container.firstChild);
+
+    const renderer = new Renderer({ depth: false, alpha: true });
+    // Guard: if WebGL context fails
+    const gl = renderer.gl;
+    if (!gl) {
+      console.error("Failed to create WebGL context.");
+      return;
+    }
+    rendererRef.current = renderer;
+
+    // Add canvas
+    container.appendChild(gl.canvas);
+    gl.clearColor(0, 0, 0, 0);
+
+    // DPR-aware sizing
+    const setSize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = container.clientWidth || 1;
+      const height = container.clientHeight || 1;
+      renderer.setSize(width * dpr, height * dpr);
+      gl.canvas.style.width = `${width}px`;
+      gl.canvas.style.height = `${height}px`;
+      const cam = cameraRef.current;
+      if (cam) cam.perspective({ aspect: width / height });
+    };
+
+    // Camera
+    const camera = new Camera(gl, { fov: 15 });
+    cameraRef.current = camera;
+    camera.position.set(0, 0, cameraDistance);
+
+    // Geometry & Program
     const geometry = new Geometry(gl, {
       position: { size: 3, data: positions },
       random: { size: 4, data: randoms },
@@ -180,8 +220,8 @@ const Particles: React.FC<ParticlesProps> = ({
     });
 
     const program = new Program(gl, {
-      vertex,
-      fragment,
+      vertex: VERTEX_SHADER,
+      fragment: FRAGMENT_SHADER,
       uniforms: {
         uTime: { value: 0 },
         uSpread: { value: particleSpread },
@@ -193,65 +233,109 @@ const Particles: React.FC<ParticlesProps> = ({
       depthTest: false,
     });
 
-    const particles = new Mesh(gl, { mode: gl.POINTS, geometry, program });
+    const mesh = new Mesh(gl, { mode: gl.POINTS, geometry, program });
+    meshRef.current = mesh;
 
-    let animationFrameId: number;
-    let lastTime = performance.now();
-    let elapsed = 0;
+    // ResizeObserver for container
+    const ro = new ResizeObserver(() => setSize());
+    ro.observe(container);
+    setSize();
 
-    const update = (t: number) => {
-      animationFrameId = requestAnimationFrame(update);
-      const delta = t - lastTime;
-      lastTime = t;
-      elapsed += delta * speed;
+    lastTimeRef.current = performance.now();
 
-      program.uniforms.uTime.value = elapsed * 0.001;
+    // RAF loop (stable, no deps)
+    const tick = (t: number) => {
+      const r = rendererRef.current;
+      const c = cameraRef.current;
+      const m = meshRef.current;
+      if (!r || !c || !m) return;
 
-      if (moveParticlesOnHover) {
-        particles.position.x = -mouseRef.current.x * particleHoverFactor;
-        particles.position.y = -mouseRef.current.y * particleHoverFactor;
+      rafRef.current = requestAnimationFrame(tick);
+
+      const delta = t - lastTimeRef.current;
+      lastTimeRef.current = t;
+
+      const time = m.program.uniforms.uTime;
+      time.value += delta * speedRef.current * 0.001;
+
+      // Hover offset
+      if (hoverRef.current) {
+        m.position.x = -mouseRef.current.x * hoverFactorRef.current;
+        m.position.y = -mouseRef.current.y * hoverFactorRef.current;
       } else {
-        particles.position.x = 0;
-        particles.position.y = 0;
+        m.position.x = 0;
+        m.position.y = 0;
       }
 
-      if (!disableRotation) {
-        particles.rotation.x = Math.sin(elapsed * 0.0002) * 0.1;
-        particles.rotation.y = Math.cos(elapsed * 0.0005) * 0.15;
-        particles.rotation.z += 0.01 * speed;
+      // Gentle rotation unless disabled
+      if (!rotationDisabledRef.current) {
+        m.rotation.x = Math.sin(time.value * 0.2) * 0.1;
+        m.rotation.y = Math.cos(time.value * 0.5) * 0.15;
+        m.rotation.z += 0.01 * speedRef.current;
       }
 
-      renderer.render({ scene: particles, camera });
+      r.render({ scene: m, camera: c });
     };
+    rafRef.current = requestAnimationFrame(tick);
 
-    animationFrameId = requestAnimationFrame(update);
+    // Pointer handling (only when enabled)
+    const onPointerMove = (e: PointerEvent) => {
+      const rect = container.getBoundingClientRect();
+      const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const ny = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+      mouseRef.current.x = nx;
+      mouseRef.current.y = ny;
+    };
+    const enablePointer = () => container.addEventListener("pointermove", onPointerMove, { passive: true });
+    const disablePointer = () => container.removeEventListener("pointermove", onPointerMove);
 
+    if (moveParticlesOnHover) enablePointer();
+
+    // Cleanup
     return () => {
-      window.removeEventListener("resize", resize);
-      if (moveParticlesOnHover) {
-        container.removeEventListener("mousemove", handleMouseMove);
-      }
-      cancelAnimationFrame(animationFrameId);
-      if (container.contains(gl.canvas)) {
-        container.removeChild(gl.canvas);
-      }
+      ro.disconnect();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      disablePointer();
+
+      // Remove canvas safely
+      if (container.contains(gl.canvas)) container.removeChild(gl.canvas);
+
+      // Clear refs
+      meshRef.current = null;
+      cameraRef.current = null;
+      rendererRef.current = null;
     };
   }, [
-    particleCount,
+    // Rebuild WebGL graph only when these change
+    positions,
+    randoms,
+    colors,
     particleSpread,
-    speed,
-    moveParticlesOnHover,
-    particleHoverFactor,
-    alphaParticles,
     particleBaseSize,
     sizeRandomness,
+    alphaParticles,
     cameraDistance,
-    disableRotation,
+    moveParticlesOnHover, // to bind/unbind pointer listener
   ]);
 
-  return (
-    <div ref={containerRef} className={`relative w-full h-full ${className}`} />
-  );
-};
+  // If hover setting toggles after mount, attach/detach pointer listener without full rebuild
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const onPointerMove = (e: PointerEvent) => {
+      const rect = container.getBoundingClientRect();
+      const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const ny = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+      mouseRef.current.x = nx;
+      mouseRef.current.y = ny;
+    };
+    if (moveParticlesOnHover) {
+      container.addEventListener("pointermove", onPointerMove, { passive: true });
+      return () => container.removeEventListener("pointermove", onPointerMove);
+    }
+  }, [moveParticlesOnHover]);
+
+  return <div ref={containerRef} className={`relative w-full h-full ${className || ""}`} />;
+});
 
 export default Particles;

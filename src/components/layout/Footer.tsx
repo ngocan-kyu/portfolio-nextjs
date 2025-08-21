@@ -1,9 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowUp } from "lucide-react";
 import { portfolioConfig } from "@/config/portfolio.config";
-import useScrollTo from "@/hooks/useScrollTo"; 
 import { memo } from "react";
 
 // Types
@@ -50,7 +48,6 @@ SocialLink.displayName = "SocialLink";
 // Memoized Footer Component
 const SimpleFooter = memo(({ onSectionChange }: SimpleFooterProps) => {
   const currentYear = new Date().getFullYear();
-  const scrollTo = useScrollTo(onSectionChange);
 
   return (
     <motion.footer
@@ -72,19 +69,6 @@ const SimpleFooter = memo(({ onSectionChange }: SimpleFooterProps) => {
               />
             ))}
           </div>
-
-          {/* Back to Top Button */}
-          <motion.button
-            onClick={() => scrollTo({ sectionId: "home", behavior: "smooth" })}
-            {...hoverScale}
-            className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors duration-200"
-            aria-label="Scroll to top of page"
-          >
-            <span>Top</span>
-            <div className="p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors duration-200">
-              <ArrowUp size={16} />
-            </div>
-          </motion.button>
         </div>
 
         {/* Copyright */}

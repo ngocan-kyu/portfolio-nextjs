@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { ShimmerButton } from "@/components/atom/magicui/shimmer-button";
 import { IconCloud } from "@/components/atom/magicui/icon-cloud";
-
+import { TypingAnimation } from "./atom/magicui/typing-animation";
 // Animation variants
 const fadeInUp = {
   initial: { opacity: 0, y: -40 },
@@ -62,7 +62,7 @@ export default function HeroSection() {
     >
       <div className="relative z-10 w-full grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
         {/* Left Column: Heading, Description, Button */}
-        <div className="text-center md:text-left space-y-6">
+        <div className="text-center md:text-left space-y-6 md:pl-20 lg:pl-52">
           {/* Heading */}
           <motion.h1
             {...fadeInUp}
@@ -76,10 +76,8 @@ export default function HeroSection() {
             {...fadeInDown}
             className="max-w-xl mx-auto md:mx-0 text-lg md:text-xl text-gray-600 dark:text-gray-300"
           >
-            Full-Stack Developer specializing in building modern web apps with
-            Java, Spring Boot, React, and AI integration.
+            You can call me Kyung or Drake
           </motion.p>
-
           {/* Contact Button */}
           <motion.div {...fadeIn}>
             <ShimmerButton
@@ -94,7 +92,7 @@ export default function HeroSection() {
         {/* Right Column: Icon Cloud */}
         <motion.div
           {...fadeIn}
-          className="flex justify-center items-center w-full h-[320px] md:h-[420px] lg:h-[500px]"
+          className="flex justify-center items-center w-full h-[320px] md:h-[420px] lg:h-[400px]"
         >
           <IconCloud images={images} />
         </motion.div>

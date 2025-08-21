@@ -1,19 +1,32 @@
 import "./globals.css";
-import { WarpBackground } from "@/components/magicui/warp-background";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import Squares from "@/components/atom/Backgrounds/Squares";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <WarpBackground/>
-        <body>
+      <body>
+        <div className="absolute inset-0 z-0">
+          <Squares
+            speed={0.5}
+            squareSize={40}
+            direction="diagonal"
+            borderColor="#1E40AF"
+            hoverFillColor="#BCA4A4"
+            backgroundColor="#000000"
+          />
+        </div>
+        <div className="relative z-10">
           <Navbar />
-          <main>
-            {children}
-          </main>
+          <main>{children}</main>
           <Footer />
-        </body>
+        </div>
+      </body>
     </html>
   );
 }

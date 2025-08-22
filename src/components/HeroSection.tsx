@@ -3,36 +3,12 @@
 import { motion } from "framer-motion";
 import { ShimmerButton } from "@/components/atom/magicui/shimmer-button";
 import { IconCloud } from "@/components/atom/magicui/icon-cloud";
-import { TypingAnimation } from "./atom/magicui/typing-animation";
-// Animation variants
-const fadeInUp = {
-  initial: { opacity: 0, y: -40 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.7 },
-};
+import { useState, useEffect, memo } from "react";
+import { portfolioConfig } from "@/config/portfolio.config";
+import type { LucideIcon } from "lucide-react";
+import type { IconType } from "react-icons";
 
-const fadeInDown = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.8, delay: 0.2 },
-};
-
-const fadeIn = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  transition: { duration: 1, delay: 0.4 },
-};
-
-// Smooth scroll function
-const scrollToSection = (sectionId: string) => {
-  const element = document.querySelector(sectionId);
-  if (element) {
-    element.scrollIntoView({ behavior: "smooth" });
-  } else {
-    console.warn(`Section ${sectionId} not found`);
-  }
-};
-
+// Tech stack icons (SimpleIcons CDN)
 const techStack = [
   "typescript",
   "javascript",
@@ -50,52 +26,110 @@ const techStack = [
   "figma",
 ];
 
-const images = techStack.map(
+const cloudImages = techStack.map(
   (slug) => `https://cdn.simpleicons.org/${slug}/${slug}`
 );
 
-export default function HeroSection() {
-  return (
-    <section
-      id="home"
-      className="relative min-h-screen flex items-center px-6 md:px-12 lg:px-20 overflow-hidden"
+// Memoized Social Link Component
+const SocialLink = memo(
+  ({ name, url, icon: Icon }: { name: string; url: string; icon: LucideIcon | IconType }) => (
+    <motion.a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Visit ${name} profile`}
+      whileHover={{ scale: 1.2, y: -2 }}
+      whileTap={{ scale: 0.95 }}
+      className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors duration-200"
     >
-      <div className="relative z-10 w-full grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-        {/* Left Column: Heading, Description, Button */}
-        <div className="text-center md:text-left space-y-6 md:pl-20 lg:pl-52">
-          {/* Heading */}
-          <motion.h1
-            {...fadeInUp}
-            className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight"
-          >
-            Hi, I’m <span className="text-blue-500">Ho Ngoc An</span>
-          </motion.h1>
+      <Icon size={24} />
+    </motion.a>
+  )
+);
 
-          {/* Subtitle */}
-          <motion.p
-            {...fadeInDown}
-            className="max-w-xl mx-auto md:mx-0 text-lg md:text-xl text-gray-600 dark:text-gray-300"
-          >
-            You can call me Kyung or Drake
-          </motion.p>
-          {/* Contact Button */}
-          <motion.div {...fadeIn}>
+SocialLink.displayName = "SocialLink";
+
+export default function HeroSection() {
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  // Track mouse for subtle parallax effect
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({
+        x: (e.clientX / window.innerWidth) * 20 - 10,
+        y: (e.clientY / window.innerHeight) * 20 - 10,
+      });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
+  return (
+    <section id="home" className="relative min-h-screen flex items-center px-6 md:px-12 lg:px-20 overflow-hidden">
+      {/* Grid layout */}
+      <div className="relative z-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+        {/* Left Column: Content */}
+        <div className="text-center lg:text-left space-y-8 lg:pl-20">
+          {/* Badge */}
+          <div className="inline-flex items-center px-4 py-2">
+            <span className="text-sm font-medium text-black">
+              Front-End Developer
+            </span>
+          </div>
+
+
+          {/* Heading */}
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+            <span className="text-black">Hi, I am</span>
+            <br />
+            <span className="bg-gradient-to-r from-orange-400 via-red-500 to-purple-600 bg-clip-text text-transparent">
+              Ho Ngoc An
+            </span>
+          </h1>
+
+          {/* Nickname + Description */}
+          <p className="text-xl md:text-2xl text-black">
+            <span className="text-orange-400">Kyung</span> | Crafting exceptional digital experiences with code, creativity, and passion.
+          </p>
+
+          {/* Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
             <ShimmerButton
-              onClick={() => scrollToSection("#contact")}
-              className="block w-full md:w-auto max-w-xs md:max-w-none mx-auto md:mx-0"
+              onClick={() => document.querySelector("#projects")?.scrollIntoView({ behavior: "smooth" })}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 border-0 px-8 py-3"
             >
-              Let’s Connect
+              View Projects →
             </ShimmerButton>
-          </motion.div>
+            <button
+              onClick={() => document.querySelector("#contact")?.scrollIntoView({ behavior: "smooth" })}
+              className="px-8 py-3 border border-gray-600 rounded-lg text-black hover:text-white hover:border-gray-400 transition-all duration-300 backdrop-blur-sm"
+            >
+              Contact Me
+            </button>
+          </div>
+
+          {/* Social Links */}
+          <div className="flex justify-center lg:justify-start space-x-6">
+            {portfolioConfig.socialLinks.map((social) => (
+              <SocialLink key={social.name} name={social.name} url={social.url} icon={social.icon} />
+            ))}
+          </div>
         </div>
 
-        {/* Right Column: Icon Cloud */}
-        <motion.div
-          {...fadeIn}
-          className="flex justify-center items-center w-full h-[320px] md:h-[420px] lg:h-[400px]"
+        {/* Right Column: Tech Cloud */}
+        <div
+          className="relative flex flex-col items-center"
+          style={{ transform: `translate(${mousePosition.x * 0.5}px, ${mousePosition.y * 0.5}px)` }}
         >
-          <IconCloud images={images} />
-        </motion.div>
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-3xl scale-150 opacity-30" />
+
+          <span className="relative">
+            <IconCloud images={cloudImages} />
+          </span>
+          <span className="text-xs text-black text-center mt-2 ">
+            Move your cursor to interact
+          </span>
+        </div>
       </div>
     </section>
   );

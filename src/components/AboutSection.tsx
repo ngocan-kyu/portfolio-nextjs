@@ -1,11 +1,22 @@
 'use client'
-
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 
+// Reusable Section Title Component
+const SectionTitle = ({ children, className = "" }) => (
+  <div className={`text-center mb-12 ${className}`}>
+    <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+      {children}
+    </h2>
+    <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto rounded-full"></div>
+  </div>
+)
+
 export default function AboutSection() {
   return (
-    <section id="about" className="min-h-screen flex items-center justify-center px-6">
+    <section id="about" className="min-h-screen flex flex-col items-center justify-center px-6">
+      <SectionTitle>About me</SectionTitle>
+      
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -15,7 +26,12 @@ export default function AboutSection() {
         {/* Left side - Image */}
         <div className="flex-1">
           <div className="relative w-full h-full md:h-[650px] rounded-xl overflow-hidden shadow-lg">
-            <Image src="/about_img.jpg" alt="About Me" fill className="object-cover" />
+            <Image
+              src="/about_img.jpg"
+              alt="About Me"
+              fill
+              className="object-cover"
+            />
             <span className="absolute bottom-4 left-4 bg-green-500 text-white px-2 py-1 rounded-full text-sm">
               Available for work
             </span>
@@ -23,11 +39,9 @@ export default function AboutSection() {
         </div>
 
         {/* Right side - Text */}
-        <div className="flex-1 bg-gray-800 dark:bg-gray-900 text-white rounded-xl p-6 md:p-10 shadow-lg">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">About Me</h2>
+        <div className="flex-1 bg-black dark:bg-gray-900 text-white rounded-xl p-6 md:p-10 shadow-lg">
           <p className="text-lg mb-6 leading-relaxed">
-            I am a passionate software engineer with experience building web applications and digital products. 
-            I specialize in frontend development with React and Next.js, but I am also comfortable working with backend technologies like Node.js and NestJS.
+            I am a passionate software engineer with experience building web applications and digital products. I specialize in frontend development with React and Next.js, but I am also comfortable working with backend technologies like Node.js and NestJS.
           </p>
           <p className="text-lg mb-6 leading-relaxed">
             My journey in tech started with a strong foundation in software development. I have worked with enthusiastic friends to create intuitive, performant, and accessible digital experiences.

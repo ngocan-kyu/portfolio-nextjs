@@ -15,71 +15,74 @@ import { useEffect, useRef, useState, useCallback, memo } from "react";
 import { debounce } from "lodash";
 import MobileMenu from "../atom/MobileMenu";
 
-// ------------------------ Types ------------------------
 interface NavigationItem {
   title: string;
   icon: React.ReactNode;
   href: string;
 }
 
-// ------------------------ Constants ------------------------
 const NAVIGATION_DATA: NavigationItem[] = [
-  { title: "Home", icon: <HomeIcon className="h-full w-full" />, href: "#home" },
-  { title: "About", icon: <User className="h-full w-full" />, href: "#about" },
-  { title: "Skills", icon: <LightbulbIcon className="h-full w-full" />, href: "#skills" },
-  { title: "Projects", icon: <FolderGit2 className="h-full w-full" />, href: "#projects" },
-  { title: "Contact", icon: <Mail className="h-full w-full" />, href: "#contact" },
+  { title: "Home", icon: <HomeIcon />, href: "#home" },
+  { title: "About", icon: <User />, href: "#about" },
+  { title: "Skills", icon: <LightbulbIcon />, href: "#skills" },
+  { title: "Projects", icon: <FolderGit2 />, href: "#projects" },
+  { title: "Contact", icon: <Mail />, href: "#contact" },
 ];
 
-const SCROLL_THRESHOLD = 100;
-const DEFAULT_SECTION = "home";
+const SCROLL_THRESHOLD = 150;
 
 const Navbar = () => {
-  const [activeSection, setActiveSection] = useState<string>(DEFAULT_SECTION);
-  const [isVisible, setIsVisible] = useState<boolean>(true);
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-  const lastScrollY = useRef<number>(0);
+  const [activeSection, setActiveSection] = useState("home");
+  const [isVisible, setIsVisible] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
-  /* ------------------------ Handle navbar visibility on scroll ------------------------ */
-  const handleNavbarVisibility = useCallback(
-    debounce(() => {
-      const currentScrollY = window.scrollY;
-      const scrollingDown = currentScrollY > lastScrollY.current;
+  const lastScrollY = useRef(0);
+  const activeSectionRef = useRef("home"); // ref để scroll handler luôn có giá trị mới
 
-      if (!isOpen) {
-        setIsVisible(!scrollingDown || currentScrollY <= SCROLL_THRESHOLD);
-      }
-      lastScrollY.current = currentScrollY;
-    }, 100),
-    [isOpen]
-  );
+  useEffect(() => {
+    activeSectionRef.current = activeSection;
+  }, [activeSection]);
 
-  /* ------------------------ Detect active section ------------------------ */
+  // IntersectionObserver detect section
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        const visibleSection = entries.find((entry) => entry.isIntersecting);
-        if (visibleSection) {
-          setActiveSection(visibleSection.target.id);
+        const visibleEntry = entries.find((entry) => entry.isIntersecting);
+        if (visibleEntry) {
+          setActiveSection(visibleEntry.target.id);
         }
       },
-      {
-        root: null,
-        threshold: 0.6,
-      }
+      { root: null, threshold: 0.3 }
     );
 
     NAVIGATION_DATA.forEach((item) => {
       const section = document.querySelector(item.href);
-      if (section) {
-        observer.observe(section);
-      }
+      if (section) observer.observe(section);
     });
 
     return () => observer.disconnect();
   }, []);
 
-  /* ------------------------ Attach scroll listener ------------------------ */
+  // Scroll handler
+  const handleNavbarVisibility = useCallback(
+    debounce(() => {
+      const currentScrollY = window.scrollY;
+      const scrollingDown = currentScrollY > lastScrollY.current;
+
+      // Chỉ hide navbar khi ở Home
+      if (!isOpen) {
+        if (activeSectionRef.current === "home") {
+          setIsVisible(!scrollingDown || currentScrollY <= SCROLL_THRESHOLD);
+        } else {
+          setIsVisible(true); // luôn show ở các section khác
+        }
+      }
+
+      lastScrollY.current = currentScrollY;
+    }, 50),
+    [isOpen]
+  );
+
   useEffect(() => {
     window.addEventListener("scroll", handleNavbarVisibility, { passive: true });
     return () => {
@@ -88,18 +91,15 @@ const Navbar = () => {
     };
   }, [handleNavbarVisibility]);
 
-  /* ------------------------ Click handler ------------------------ */
   const handleNavigationClick = useCallback((href?: string) => {
     setIsOpen(false);
-    if (href) {
-      setActiveSection(href.replace("#", "").toLowerCase());
-    }
+    if (href) setActiveSection(href.replace("#", "").toLowerCase());
   }, []);
 
   return (
     <nav
       className={cn(
-        "fixed top-5 inset-x-0 mx-auto w-full px-5 sm:w-fit sm:px-5 z-[9999]",
+        "fixed top-5 inset-x-0 mx-auto w-full sm:w-fit z-[9999]",
         "transform transition-transform duration-300 ease-in-out will-change-transform",
         isVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"
       )}

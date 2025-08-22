@@ -7,6 +7,7 @@ const skills = [
   { icon: <Code2 />, title: 'Frontend', desc: 'React, Next.js, HTML, CSS, TailwindCSS' },
   { icon: <Database />, title: 'Backend', desc: 'Java, Spring Boot, Node.js, REST APIs' },
   { icon: <Globe />, title: 'Databases', desc: 'MySQL, PostgreSQL, SQLite' },
+  [ ]
 ]
 
 export default function SkillsSection() {

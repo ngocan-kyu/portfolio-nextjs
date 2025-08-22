@@ -80,7 +80,7 @@ export const portfolioConfig: PortfolioConfig = {
 
   socialLinks: [
     { name: "Facebook", url: "https://facebook.com/kyungdev", icon: Facebook },
-    { name: "Instagram", url: "https://instagram.com/_wscccc", icon: Instagram },
+    { name: "Instagram", url: "https://instagram.com/_.wscccc", icon: Instagram },
     { name: "LinkedIn", url: "https://linkedin.com/in/kyungdev", icon: Linkedin },
     { name: "Discord", url: "https://discord.com/users/467540097772945409", icon: SiDiscord },
     { name: "GitHub", url: "https://github.com/ngocan-kyu", icon: Github },
